@@ -26,6 +26,7 @@ function Entity() {
 	// boundaries of the level
 	this.xBounds = 0;
 	this.yBounds = 0;
+	this.outOfYBounds = false;
 	
 	this.falling = true;
 	this.grounded = false;
@@ -41,22 +42,6 @@ function Entity() {
 Entity.prototype.setPosition = function(x, y) {
 	this.positionX = x;
 	this.positionY = y;
-};
-
-Entity.prototype.getX = function() {
-	return this.positionX;
-};
-
-Entity.prototype.getY = function() {
-	return this.positionY;
-};
-
-Entity.prototype.getHeight = function() {
-	return this.height;
-};
-
-Entity.prototype.getWidth = function() {
-	return this.width;
 };
 
 Entity.prototype.setBounds = function(xBound, yBound) {
@@ -108,6 +93,11 @@ Entity.prototype.checkMapCollision = function(dt) {
 	
 	this.tempX = this.positionX;
 	this.tempY = this.positionY;
+	
+//	if(this.yDest + this.height >= this.yBounds) {
+//		this.outOfYBounds = true;
+//		return;
+//	}
 	
 	var tileLayer = this.tileMap.getTileLayer('Tile Layer 1');
 	

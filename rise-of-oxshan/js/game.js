@@ -40,6 +40,7 @@ function PlayState() {
 	this.levelPath = '/rise-of-oxshan/res/maps/level-';
 	this.currentLevel = 1;
 	this.loadNextLevel = false;
+	this.finishedLoadingLevel = false;
 	this.numLevels = 3;
 	
 	var that = this;
@@ -111,15 +112,15 @@ MenuState.prototype.handleInput = function() {
 // PlayState - the state where the player actually plays the game
 PlayState.prototype = new GameState();
 
-PlayState.prototype.loadLevel = function(level) {
-	this.tileMap = new TileMap();
-	this.player = new Player();
-	var that = this;
-	this.loadNextLevel = false;
-	this.tileMap.loadFile(this.levelPath + this.currentLevel + '.json', function() {
-		that.continueLoadingLevel();
-	});
-};
+//PlayState.prototype.loadLevel = function(level) {
+//	this.tileMap = new TileMap();
+//	this.player = new Player();
+//	var that = this;
+//	this.loadNextLevel = false;
+//	this.tileMap.loadFile(this.levelPath + this.currentLevel + '.json', function() {
+//		that.continueLoadingLevel();
+//	});
+//};
 
 PlayState.prototype.continueLoadingLevel = function() {
 	console.log('continue loading level');
@@ -132,7 +133,6 @@ PlayState.prototype.continueLoadingLevel = function() {
 	this.camera.setPosition(0, this.tileMap.mapLayers[0].height * 
 							this.tileMap.mapLayers[0].tileHeight - canvasHeight);
 	
-	console.log('setup player');
 	this.player.setBounds(this.tileMap.mapLayers[0].width * 
 						  this.tileMap.mapLayers[0].tileWidth,
 						  this.tileMap.mapLayers[0].height * 
@@ -140,13 +140,14 @@ PlayState.prototype.continueLoadingLevel = function() {
 	this.player.setPosition(this.tileMap.getObjectLayer('player').objects[0].positionX,
 							this.tileMap.getObjectLayer('player').objects[0].positionY);
 	this.player.setTileMap(this.tileMap);
+	this.player.dead = false;
+	this.player.outOfYBounds = false;
 	
 	var enemyLayer = this.tileMap.getObjectLayer('enemies');
 	this.enemies.length = 0;
 	for(var i = 0; i < enemyLayer.objects.length; ++i) {
 		this.enemies[i] = new Wizard();
 		this.enemies[i].positionX = enemyLayer.objects[i].positionX;
-		console.log(this.enemies[i].positionX);
 		this.enemies[i].positionY = enemyLayer.objects[i].positionY;
 		this.enemies[i].setTileMap(this.tileMap);
 		this.enemies[i].setBounds(this.tileMap.mapLayers[0].width * 
@@ -155,42 +156,57 @@ PlayState.prototype.continueLoadingLevel = function() {
 						  this.tileMap.mapLayers[0].tileHeight);
 	}
 	
+	this.finishedLoadingLevel = true;
+	
 };
 
 PlayState.prototype.update = function(dt) {
 		
 	if(this.loadNextLevel) {
 		if(++this.currentLevel <= this.numLevels) {
-			this.loadLevel(this.currentLevel);
+			console.log('loading next level: ' + this.currentLevel);
+			this.tileMap = new TileMap();
+			this.player = new Player();
+			var that = this;
+			this.loadNextLevel = false;
+			this.finishedLoadingLevel = false;
+			this.tileMap.loadFile(this.levelPath + this.currentLevel + '.json', function() {
+				that.continueLoadingLevel();
+			});
 		}
 	}
 	
-	if(Key.isKeyPressed(Key.W)) {
-		this.player.setJumping(true);
-	}
+	if(this.finishedLoadingLevel) {
+		
+		if(this.player.positionY + this.player.dy * dt + this.player.height >= 
+		   this.player.yBounds || this.player.dead) {
+			console.log('player dying');
+			this.continueLoadingLevel();
+		}
+		
+		if(Key.isKeyPressed(Key.W)) {
+			this.player.setJumping(true);
+		}
 
-	if(Key.isDown(Key.D)) this.player.movingRight = true;
-	else this.player.movingRight = false;
+		if(Key.isDown(Key.D)) this.player.movingRight = true;
+		else this.player.movingRight = false;
 
-	if(Key.isDown(Key.A)) this.player.movingLeft = true;
-	else this.player.movingLeft = false;
+		if(Key.isDown(Key.A)) this.player.movingLeft = true;
+		else this.player.movingLeft = false;
 
-	if(Key.isDown(Key.SHIFT)) this.player.shiftPressed = true;
-	else this.player.shiftPressed = false;
+		if(Key.isDown(Key.SHIFT)) this.player.shiftPressed = true;
+		else this.player.shiftPressed = false;
 
-	this.player.update(dt, this.camera);
-	this.camera.checkBounds();
-	
-	if(this.player.reachedLvlEndl) {
-		this.loadNextLevel = true;
-	}
-	
-	if(this.player.dead) {
-		this.loadLevel(this.currentLevel);
-	}
+		this.player.update(dt, this.camera);
+		this.camera.checkBounds();
 
-	for(var i = 0; i < this.enemies.length; ++i) {
-		this.enemies[i].update(dt);
+		if(this.player.reachedLvlEndl) {
+			this.loadNextLevel = true;
+		}
+
+		for(var i = 0; i < this.enemies.length; ++i) {
+			this.enemies[i].update(dt);
+		}
 	}
 	
 };
