@@ -50,6 +50,7 @@ function PlayState() {
 	});
 	
 	this.enemies = [];
+	this.projectiles = [];
 	
 }
 
@@ -112,16 +113,6 @@ MenuState.prototype.handleInput = function() {
 // PlayState - the state where the player actually plays the game
 PlayState.prototype = new GameState();
 
-//PlayState.prototype.loadLevel = function(level) {
-//	this.tileMap = new TileMap();
-//	this.player = new Player();
-//	var that = this;
-//	this.loadNextLevel = false;
-//	this.tileMap.loadFile(this.levelPath + this.currentLevel + '.json', function() {
-//		that.continueLoadingLevel();
-//	});
-//};
-
 PlayState.prototype.continueLoadingLevel = function() {
 	console.log('continue loading level');
 	
@@ -158,6 +149,8 @@ PlayState.prototype.continueLoadingLevel = function() {
 	
 	this.finishedLoadingLevel = true;
 	
+	this.projectiles.splice(0, this.projectiles.length);
+	
 };
 
 PlayState.prototype.update = function(dt) {
@@ -166,7 +159,14 @@ PlayState.prototype.update = function(dt) {
 		if(++this.currentLevel <= this.numLevels) {
 			console.log('loading next level: ' + this.currentLevel);
 			this.tileMap = new TileMap();
+			
+			// back up player info
+			var prevPlayer = this.player;
 			this.player = new Player();
+			this.player.health = prevPlayer.health;
+			this.player.lives = prevPlayer.lives;
+			
+			// load next level
 			var that = this;
 			this.loadNextLevel = false;
 			this.finishedLoadingLevel = false;
@@ -179,10 +179,42 @@ PlayState.prototype.update = function(dt) {
 	if(this.finishedLoadingLevel) {
 		
 		if(this.player.positionY + this.player.dy * dt + this.player.height >= 
-		   this.player.yBounds || this.player.dead) {
-			console.log('player dying');
+		   this.player.yBounds) {
+			this.player.health = 5;
+		   this.player.lives--;
+		   this.player.hit = false;
 			this.continueLoadingLevel();
 		}
+		
+		// player attacking: add a new fireball
+		if(Key.isKeyPressed(Key.SPACE)) {
+			this.player.attacking = true;
+			this.projectiles.push(new Fireball());
+			var index = this.projectiles.length - 1;
+			this.projectiles[index].tileMap = this.tileMap;
+			this.projectiles[index].positionX = this.player.positionX + 
+				this.player.width;
+			this.projectiles[index].positionY = this.player.positionY / 2;
+			this.projectiles[index].setBounds(this.tileMap.mapLayers[0].width * 
+						  this.tileMap.mapLayers[0].tileWidth,
+						  this.tileMap.mapLayers[0].height * 
+						  this.tileMap.mapLayers[0].tileHeight);
+			
+			// set the fireball's direction in front of the player
+			if(this.player.facingRight) {
+				this.projectiles[index].setDirection(parseInt(this.player.positionX + this.player.width), 
+													 parseInt(this.player.positionX + this.player.width + 1), 
+													 parseInt(this.player.positionY + this.player.height / 4), 
+													 parseInt(this.player.positionY + this.player.height / 4));
+			}
+			else {
+				this.projectiles[index].setDirection(parseInt(this.player.positionX), 
+													 parseInt(this.player.positionX - 1), 
+													 parseInt(this.player.positionY + this.player.height / 4), 
+													 parseInt(this.player.positionY + this.player.height / 4));
+			}
+		}
+		
 		
 		if(Key.isKeyPressed(Key.W)) {
 			this.player.setJumping(true);
@@ -203,9 +235,78 @@ PlayState.prototype.update = function(dt) {
 		if(this.player.reachedLvlEndl) {
 			this.loadNextLevel = true;
 		}
-
+		
+		// update enemies
 		for(var i = 0; i < this.enemies.length; ++i) {
-			this.enemies[i].update(dt);
+			this.enemies[i].update(dt, this.player);
+			
+			if(this.enemies[i].readyToFire) {
+				this.projectiles.push(new Lightning());
+				this.projectiles[this.projectiles.length - 1].tileMap = this.tileMap;
+				this.projectiles[this.projectiles.length - 1].positionX = this.enemies[i].positionX;
+				this.projectiles[this.projectiles.length - 1].positionY = this.enemies[i].positionY;
+				this.projectiles[this.projectiles.length - 1].setBounds(this.tileMap.mapLayers[0].width * 
+						  this.tileMap.mapLayers[0].tileWidth,
+						  this.tileMap.mapLayers[0].height * 
+						  this.tileMap.mapLayers[0].tileHeight);
+				if(this.enemies[i].facingRight) {
+					this.projectiles[this.projectiles.length - 1].setDirection(this.enemies[i].positionX + 
+																			   this.enemies[i].width,
+																			  this.player.positionX,
+																			  this.enemies[i].positionY + 
+																			   this.enemies[i].height / 4,
+																			  this.player.positionY);
+				}
+				else {
+					this.projectiles[this.projectiles.length - 1].setDirection(this.enemies[i].positionX,
+																			  this.player.positionX,
+																			  this.enemies[i].positionY + 
+																			   this.enemies[i].height / 4,
+																			  this.player.positionY);
+				}
+				
+			}
+		}
+		// update projectiles	
+		for(i = 0; i < this.projectiles.length; ++i) {
+			this.projectiles[i].update(dt);
+			if(this.projectiles[i].dead) {
+				this.projectiles.splice(i, 1);
+			}
+		}
+		
+		// check for collision between projectiles and enemies
+		for(i = 0; i < this.enemies.length; ++i) {
+			for(var j = 0; j < this.projectiles.length; ++j) {
+				if(this.projectiles[j] instanceof Lightning) {
+					if(this.projectiles[j].intersects(this.player)) {
+						this.player.hit = true;
+						this.player.flashCounter = 0;
+						this.player.flashTimer = 0;
+					}
+				}
+				
+				if(this.projectiles[j] instanceof Fireball) {
+					if(this.projectiles[j].intersects(this.enemies[i])) {
+						this.projectiles.splice(j, 1);
+						this.enemies.splice(i, 1);
+					}
+				}
+			}
+		}
+		
+		// if player's life is depleted and the dying animation finished, load
+		// new level
+		if(this.player.dead) {
+			if(this.player.currentAnimation == this.player.PLAYER_DYING_RIGHT || 
+			   this.player.PLAYER_DYING_LEFT) { 
+				   if(this.player.animations[this.player.currentAnimation].timesPlayed > 0) {
+					   this.player.health = 5;
+					   this.player.lives--;
+					   this.player.hit = false;
+					   this.continueLoadingLevel();
+				}
+			}
 		}
 	}
 	
@@ -220,11 +321,15 @@ PlayState.prototype.draw = function() {
 		this.enemies[i].draw(this.camera);
 	}
 	
+	for(i = 0; i < this.projectiles.length; ++i) {
+		this.projectiles[i].draw(this.camera);
+	}
+	
 	this.player.draw(this.camera);
 	
-	ctx.beginPath();
-	ctx.fillText(Game.elapsed, 10, 20);
-	ctx.closePath();
+//	ctx.beginPath();
+//	ctx.fillText(Game.elapsed, 10, 20);
+//	ctx.closePath();
 };
 
 // list of all the resources needed
@@ -233,7 +338,10 @@ window.onload = function() {
 		grey_dot: '/rise-of-oxshan/res/grey_dot.png',
 		menu_text: '/rise-of-oxshan/res/menu-text.png',
 		player: '/rise-of-oxshan/res/player-final.png',
-		wizard: '/rise-of-oxshan/res/wizard.png'
+		wizard: '/rise-of-oxshan/res/wizard-spritesheet.png',
+		fireball: '/rise-of-oxshan/res/fireball.png',
+		lightning: '/rise-of-oxshan/res/lightning.png',
+		heart: '/rise-of-oxshan/res/heart.png'
 	};
 	
 	loadImages(sources, startGame);
