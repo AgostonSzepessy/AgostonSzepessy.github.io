@@ -1,0 +1,17 @@
+#left-side {
+    float: left;
+    overflow: hidden;
+    width: 50%;
+/*    text-align: center;*/
+}
+
+#right-side {
+    float: right;
+    overflow: hidden;
+    width: 50%;
+}
+
+#self-picture {
+    display: block;
+    margin: auto;
+}
