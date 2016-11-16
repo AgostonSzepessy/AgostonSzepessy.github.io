@@ -29,7 +29,7 @@ function PlayState() {
     'use strict';
     GameState.call();
 	
-	clear('#ffffff');
+	clear('#7873fd');
 	this.camera = new Camera(0, 0, canvasWidth, canvasHeight);
 	this.camera.setHeight(canvasHeight);
 	this.camera.setWidth(canvasWidth);
@@ -52,6 +52,7 @@ function PlayState() {
 	this.enemies = [];
 	this.projectiles = [];
 	
+	this.mountains = new Background('mountains');
 }
 
 
@@ -71,7 +72,7 @@ MenuState.prototype.draw = function() {
     clear('#51C6ED');
 	
 	ctx.beginPath();
-
+    
 	for(i = 0; i < 2; ++i) {
 		ctx.drawImage(this.menuTextImg, i * this.textWidth, 0, this.textWidth, this.textHeight,
 						canvasWidth / 2 - this.textWidth, canvasHeight / 2 + 30 * i, 
@@ -81,9 +82,11 @@ MenuState.prototype.draw = function() {
 						 canvasWidth / 2 - this.textWidth - this.selectorImgWidth, canvasHeight / 2 + 30 * i,
 						 this.selectorImgWidth, this.selectorImgHeight);
 		}
-	}
-	
+	}    
+    
 	ctx.closePath();
+    
+    
 };
 
 // Handles the input for this state and switches states based on it
@@ -151,6 +154,13 @@ PlayState.prototype.continueLoadingLevel = function() {
 	
 	this.projectiles.splice(0, this.projectiles.length);
 	
+	this.mountains.positionX = 0;
+//	this.mountains.positionY = parseInt(this.tileMap.getObjectLayer('background').objects[0].positionY / 
+//								this.tileMap.mapLayers[0].tileHeight) * this.tileMap.mapLayers[0].tileHeight - 
+//								this.mountains.height;
+    
+    this.mountains.positionY = parseInt(this.tileMap.mapLayers[0].height * this.tileMap.mapLayers[0].tileHeight) - this.mountains.height;
+
 };
 
 PlayState.prototype.update = function(dt) {
@@ -314,7 +324,10 @@ PlayState.prototype.update = function(dt) {
 
 PlayState.prototype.draw = function() {
     'use strict';
-    clear('#655541');
+    clear('#51C6ED');
+    
+	this.mountains.draw(this.camera);
+	
 	this.tileMap.draw(this.camera);
 	
 	for(var i = 0; i < this.enemies.length; ++i) {
@@ -341,7 +354,8 @@ window.onload = function() {
 		wizard: '/rise-of-oxshan/res/wizard-spritesheet.png',
 		fireball: '/rise-of-oxshan/res/fireball.png',
 		lightning: '/rise-of-oxshan/res/lightning.png',
-		heart: '/rise-of-oxshan/res/heart.png'
+		heart: '/rise-of-oxshan/res/heart.png',
+		mountains: '/rise-of-oxshan/res/mountains.png'
 	};
 	
 	loadImages(sources, startGame);
