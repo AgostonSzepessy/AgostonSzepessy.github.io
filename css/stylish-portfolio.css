@@ -19,6 +19,7 @@ body {
 .text-vertical-center {
     display: table-cell;
     text-align: left;
+    padding-left: 30px;
     vertical-align: middle;
 }
 
@@ -158,7 +159,7 @@ hr.small {
     height: 100%;
     background-image: url(../img/cloud.png);
     background-repeat: no-repeat;
-    background-position: 24px 0;
+    background-position: right 30px center;
     background-size: contain;
 }
 
